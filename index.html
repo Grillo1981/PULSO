@@ -12,9 +12,241 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        background: #0c4a6e;
+        color: #f8fafc;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .fade-in { animation: fadeIn 0.4s ease-out; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      .breathe-circle {
+        transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+    </style>
   </head>
-  <body class="bg-sky-900 text-slate-900 antialiased select-none font-sans overflow-x-hidden min-h-screen">
+  <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      const e = React.createElement;
+      const { useState, useEffect, useRef } = React;
+
+      const PROTOCOLS = [
+        {
+          id: 'respiracion',
+          title: 'Respiración Cuadrada 4x4',
+          sub: 'Equilibrio vagal y serenidad',
+          desc: 'Inhala en 4s, sostén en 4s, exhala en 4s, sostén en vacío 4s.',
+          icon: 'wind',
+          color: 'from-cyan-500 to-blue-600',
+          duration: 60,
+          phases: [
+            { text: 'Inhala profundamente por la nariz', dur: 4, scale: 1.35 },
+            { text: 'Sostén el aire suavemente', dur: 4, scale: 1.35 },
+            { text: 'Exhala liberando toda la tensión', dur: 4, scale: 0.9 },
+            { text: 'Pausa en calma y presencia', dur: 4, scale: 0.9 }
+          ]
+        },
+        {
+          id: 'postura',
+          title: 'Liberación Cervical & Escapular',
+          sub: 'Alivio de cuello y hombros',
+          desc: 'Apertura de pecho y estiramiento de trapecios para guardia clínica.',
+          icon: 'activity',
+          color: 'from-emerald-500 to-teal-600',
+          duration: 60,
+          phases: [
+            { text: 'Hombros atrás y abajo en círculos lentos', dur: 15, scale: 1.15 },
+            { text: 'Oreja derecha hacia hombro derecho', dur: 15, scale: 1.1 },
+            { text: 'Oreja izquierda hacia hombro izquierdo', dur: 15, scale: 1.1 },
+            { text: 'Entrelaza manos detrás, abre el pecho y respira', dur: 15, scale: 1.25 }
+          ]
+        },
+        {
+          id: 'ocular',
+          title: 'Descanso Ocular 20-20-20',
+          sub: 'Pantallas, microscopio e historias clínicas',
+          desc: 'Regla 20-20-20 para fatiga visual y tensión pericraneal.',
+          icon: 'eye',
+          color: 'from-amber-500 to-orange-600',
+          duration: 60,
+          phases: [
+            { text: 'Fija la mirada en el punto más lejano', dur: 20, scale: 1.2 },
+            { text: 'Cierra ojos y frota palmas en calor', dur: 20, scale: 1.0 },
+            { text: 'Coloca palmas tibias sobre los ojos sin presionar', dur: 20, scale: 1.1 }
+          ]
+        },
+        {
+          id: 'anclaje',
+          title: 'Anclaje Somático 5-4-3-2-1',
+          sub: 'Reconexión tras eventos de alto estrés',
+          desc: 'Sensación de presencia en pies y manos para volver al centro.',
+          icon: 'heart-pulse',
+          color: 'from-purple-500 to-indigo-600',
+          duration: 60,
+          phases: [
+            { text: 'Siente la planta de tus pies firmes en el piso', dur: 15, scale: 1.1 },
+            { text: 'Percibe 3 sonidos a tu alrededor en el hospital', dur: 15, scale: 1.15 },
+            { text: 'Siente el contacto de tu ropa y temperatura', dur: 15, scale: 1.1 },
+            { text: 'Mano al pecho: Inhala gratitud por tu labor', dur: 15, scale: 1.3 }
+          ]
+        }
+      ];
+
+      function App() {
+        const [selected, setSelected] = useState(null);
+        const [active, setActive] = useState(false);
+        const [timeLeft, setTimeLeft] = useState(60);
+        const [phaseIndex, setPhaseIndex] = useState(0);
+        const [phaseTimer, setPhaseTimer] = useState(0);
+        const [completed, setCompleted] = useState(false);
+
+        useEffect(() => {
+          if (window.lucide) window.lucide.createIcons();
+        });
+
+        useEffect(() => {
+          let timer = null;
+          if (active && timeLeft > 0) {
+            timer = setInterval(() => {
+              setTimeLeft(t => t - 1);
+              setPhaseTimer(p => p + 1);
+            }, 1000);
+          } else if (active && timeLeft === 0) {
+            setActive(false);
+            setCompleted(true);
+          }
+          return () => clearInterval(timer);
+        }, [active, timeLeft]);
+
+        const startSession = (proto) => {
+          setSelected(proto);
+          setTimeLeft(proto.duration || 60);
+          setPhaseIndex(0);
+          setPhaseTimer(0);
+          setActive(true);
+          setCompleted(false);
+        };
+
+        const currentPhase = selected ? selected.phases[phaseIndex % selected.phases.length] : null;
+
+        useEffect(() => {
+          if (!active || !selected) return;
+          const phaseDur = currentPhase ? currentPhase.dur : 4;
+          if (phaseTimer >= phaseDur) {
+            setPhaseIndex(i => (i + 1) % selected.phases.length);
+            setPhaseTimer(0);
+          }
+        }, [phaseTimer, active, selected]);
+
+        return e('div', { className: 'max-w-md mx-auto min-h-screen flex flex-col justify-between p-4 sm:p-6' },
+          // Header
+          e('header', { className: 'flex items-center justify-between py-3 border-b border-slate-800' },
+            e('div', { className: 'flex items-center space-x-3' },
+              e('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-teal-400 flex items-center justify-center font-bold text-white shadow-lg' }, 'P'),
+              e('div', null,
+                e('h1', { className: 'text-xl font-bold tracking-tight text-white flex items-center gap-1.5' },
+                  'PULSO',
+                  e('span', { className: 'text-[10px] uppercase tracking-wider bg-sky-950 text-sky-300 px-2 py-0.5 rounded-full border border-sky-800' }, 'HUV')
+                ),
+                e('p', { className: 'text-xs text-slate-400' }, '60 segundos para quien cuida')
+              )
+            ),
+            selected && e('button', {
+              onClick: () => { setActive(false); setSelected(null); },
+              className: 'text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800'
+            }, 'Salir')
+          ),
+
+          // Main View
+          !selected ? e('main', { className: 'my-auto py-4 space-y-4 fade-in' },
+            e('div', { className: 'bg-gradient-to-r from-sky-900/40 to-slate-900/60 p-4 rounded-2xl border border-sky-800/40' },
+              e('p', { className: 'text-sm text-sky-200 leading-relaxed font-medium' },
+                'Toma una pausa de 60 segundos durante tu turno para regular tu sistema nervioso y oxigenar tu mente.'
+              )
+            ),
+            e('div', { className: 'grid grid-cols-1 gap-3' },
+              PROTOCOLS.map(proto => e('button', {
+                key: proto.id,
+                onClick: () => startSession(proto),
+                className: 'flex items-center p-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-sky-500/50 transition-all text-left group shadow-sm active:scale-[0.98]'
+              },
+                e('div', { className: `w-12 h-12 rounded-xl bg-gradient-to-br ${proto.color} flex items-center justify-center text-white shrink-0 mr-4 shadow-md group-hover:scale-105 transition-transform` },
+                  e('i', { 'data-lucide': proto.icon, className: 'w-6 h-6' })
+                ),
+                e('div', { className: 'flex-1 min-w-0' },
+                  e('h2', { className: 'font-semibold text-white text-base truncate' }, proto.title),
+                  e('p', { className: 'text-xs text-sky-300 font-medium' }, proto.sub),
+                  e('p', { className: 'text-xs text-slate-400 mt-0.5 line-clamp-1' }, proto.desc)
+                ),
+                e('div', { className: 'text-slate-500 group-hover:text-white transition-colors ml-2' }, '→')
+              ))
+            )
+          ) : completed ? e('main', { className: 'my-auto text-center py-8 space-y-6 fade-in' },
+            e('div', { className: 'w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl font-bold shadow-xl shadow-emerald-950/50' }, '✓'),
+            e('div', { className: 'space-y-2' },
+              e('h2', { className: 'text-2xl font-bold text-white' }, '¡Pausa completada!'),
+              e('p', { className: 'text-slate-300 text-sm max-w-xs mx-auto' },
+                'Has regulado tu pulso y oxigenado tu cuerpo. Tu vocación y entrega en el HUV marcan la diferencia.'
+              )
+            ),
+            e('button', {
+              onClick: () => { setSelected(null); setCompleted(false); },
+              className: 'w-full py-3.5 bg-gradient-to-r from-sky-500 to-teal-500 text-white font-semibold rounded-xl shadow-lg active:scale-95 transition-all'
+            }, 'Volver al Menú')
+          ) : e('main', { className: 'my-auto flex flex-col items-center justify-center text-center py-6 fade-in' },
+            // Circular timer & breathing visualizer
+            e('div', { className: 'relative w-64 h-64 flex items-center justify-center my-6' },
+              e('div', {
+                className: 'absolute inset-0 rounded-full border-4 border-slate-800'
+              }),
+              e('div', {
+                className: `w-44 h-44 rounded-full bg-gradient-to-tr ${selected.color} opacity-80 flex items-center justify-center shadow-2xl breathe-circle`,
+                style: {
+                  transform: `scale(${currentPhase ? currentPhase.scale : 1})`,
+                  boxShadow: '0 0 40px rgba(14, 165, 233, 0.35)'
+                }
+              },
+                e('div', { className: 'text-center text-white' },
+                  e('span', { className: 'text-5xl font-black tracking-tighter' }, timeLeft),
+                  e('p', { className: 'text-xs font-semibold uppercase tracking-widest text-white/80' }, 'seg')
+                )
+              )
+            ),
+            e('div', { className: 'space-y-2 max-w-xs' },
+              e('p', { className: 'text-lg font-medium text-white transition-all min-h-[3rem] flex items-center justify-center' },
+                currentPhase ? currentPhase.text : ''
+              ),
+              e('p', { className: 'text-xs text-sky-400 font-semibold uppercase tracking-wider' }, selected.title)
+            ),
+            e('div', { className: 'w-full flex gap-3 mt-8' },
+              e('button', {
+                onClick: () => setActive(!active),
+                className: `flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${active ? 'bg-slate-800 text-slate-300' : 'bg-sky-500 text-white shadow-lg shadow-sky-950'}`
+              }, active ? 'Pausar' : 'Continuar'),
+              e('button', {
+                onClick: () => { setTimeLeft(60); setPhaseTimer(0); setActive(true); },
+                className: 'px-4 py-3 bg-slate-900 border border-slate-800 text-slate-300 rounded-xl text-sm hover:text-white'
+              }, 'Reiniciar')
+            )
+          ),
+
+          // Footer
+          e('footer', { className: 'py-4 text-center border-t border-slate-900 text-slate-500 text-xs flex justify-between items-center' },
+            e('span', null, 'Hospital Universitario del Valle'),
+            e('span', { className: 'text-slate-400 font-medium' }, 'Salud y Bienestar')
+          )
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+    </script>
   </body>
 </html>
